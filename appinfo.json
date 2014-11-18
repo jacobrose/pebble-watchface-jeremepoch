@@ -1,0 +1,36 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "jacob@usroses.org",
+    "longName": "Jeremepoch Canadian Watch Face",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/jeremy_thumb.png",
+                "menuIcon": true,
+                "name": "thumb",
+                "type": "png"
+            },
+            {
+                "file": "images/jeremy_watchface_fg.png",
+                "name": "jeremy_jaw",
+                "type": "png-trans"
+            },
+            {
+                "file": "images/jeremy_watchface_bg.png",
+                "name": "jeremy_background",
+                "type": "png"
+            }
+        ]
+    },
+    "shortName": "Jeremepoch",
+    "uuid": "657be3c7-c255-4d7b-a374-1afda8b0a15b",
+    "versionCode": 1,
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
