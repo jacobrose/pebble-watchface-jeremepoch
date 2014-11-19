@@ -53,28 +53,44 @@ static void set_time() {
 
 // AnimationStoppedHandler: when the jaw is fully opened, the time is revealed
 static void show_time(Animation *animation, bool finished, void *data) {
-  time_shown = true;
   set_time();
-  layer_set_hidden(text_layer_get_layer(time_layer), false);
+  if (!time_shown) {
+    layer_set_hidden(text_layer_get_layer(time_layer), false);
+    time_shown = true;
+  }
 }
 
-static void start_animation(uint32_t delay, GRect *start_position, GRect *end_position, AnimationStoppedHandler do_afterward) {
+// Set up each of the two layers of the jaw (because it's a transparent PNG)
+static void reset_animation_layer(
+  PropertyAnimation **animation,
+  BitmapLayer *layer,
+  GRect *start_position, GRect *end_position
+) {
+  if (*animation) {
+    // By the time we get here, the animation should be over, but just in case...
+    // TODO: Looks like this is often being called before the previous animation
+    // TODO: finishes, resulting in the previous animation being stopped prematurely
+    // TODO: and making the transition look janky.
+    // TODO: One workaround may be to pass pairs of animation handles around and
+    // TODO: flip from one to the other here.
+    if (animation_is_scheduled((Animation *)*animation)) {
+      animation_unschedule((Animation *)*animation);
+    }
+    property_animation_destroy(*animation);
+  }
+  *animation = property_animation_create_layer_frame(
+    bitmap_layer_get_layer(layer),
+    start_position,
+    end_position
+  );
+  animation_set_duration((Animation *)*animation, JAW_ANIMATION_LENGTH);
+  animation_set_curve((Animation *)*animation, AnimationCurveEaseInOut);
+}
+
+static void start_animation(uint32_t delay, GRect *start_position, GRect *end_position, AnimationStoppedHandler do_afterward) {  
   // Set up animation for both layers of the jaw
-  jaw_black_animation = property_animation_create_layer_frame(
-    bitmap_layer_get_layer(jaw_black_layer),
-    start_position,
-    end_position
-  );
-  animation_set_duration((Animation *)jaw_black_animation, JAW_ANIMATION_LENGTH);
-  animation_set_curve((Animation *)jaw_black_animation, AnimationCurveEaseInOut);
-  
-  jaw_white_animation = property_animation_create_layer_frame(
-    bitmap_layer_get_layer(jaw_white_layer),
-    start_position,
-    end_position
-  );
-  animation_set_duration((Animation *)jaw_white_animation, JAW_ANIMATION_LENGTH);
-  animation_set_curve((Animation *)jaw_white_animation, AnimationCurveEaseInOut);
+  reset_animation_layer(&jaw_black_animation, jaw_black_layer, start_position, end_position);
+  reset_animation_layer(&jaw_white_animation, jaw_white_layer, start_position, end_position);
 
   if (delay > 0) {
     animation_set_delay((Animation *)jaw_white_animation, delay);
@@ -95,9 +111,9 @@ static void start_animation(uint32_t delay, GRect *start_position, GRect *end_po
   animation_schedule((Animation *)jaw_white_animation);
 }
 
-// AnimationStoppedHandler: animate the mouth opening, trigger time display
+// AnimationStoppedHandler: update time, animate the mouth opening
 static void open_mouth(Animation *animation, bool finished, void *data) {
-  layer_set_hidden(text_layer_get_layer(time_layer), true);
+  set_time();
   start_animation(0, jaw_start_bounds, jaw_end_bounds, show_time);
 }
 
@@ -123,7 +139,7 @@ static void main_window_load(Window *window) {
   *jaw_end_bounds = *jaw_start_bounds;
   jaw_end_bounds->origin.y = OPEN_JAW_Y;
   
-  // Make the time layer the same size as the jaw (sloppy!)
+  // Make the time layer the same size as the jaw (sloppy! could be smaller!)
   GRect time_bounds = *jaw_start_bounds;
   time_bounds.origin.x = TIME_X;
   time_bounds.origin.y = TIME_Y;
@@ -133,7 +149,7 @@ static void main_window_load(Window *window) {
   text_layer_set_text(time_layer, "00:00");
   text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
   text_layer_set_text_alignment(time_layer, GTextAlignmentCenter);
-  layer_set_hidden(text_layer_get_layer(time_layer), true);
+  layer_set_hidden(text_layer_get_layer(time_layer), true); // hide until mouth first opens
   
   jaw_black_layer = bitmap_layer_create(*jaw_start_bounds);
   bitmap_layer_set_bitmap(jaw_black_layer, jeremy_jaw_black_bitmap);
